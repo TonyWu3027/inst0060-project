@@ -152,6 +152,17 @@ if __name__ == "__main__":
         "life_expectancy",
     ]
 
+    STRINGENCY_COLUMNS = [
+        "C1_School closing",
+        "C2_Workplace closing",
+        "C3_Cancel public events",
+        "C4_Restrictions on gatherings",
+        "C5_Close public transport",
+        "C6_Stay at home requirements",
+        "C7_Restrictions on internal movement",
+        "C8_International travel controls",
+    ]
+
     raw = load_covid_frame("./covid.csv", COVID_COLUMNS)
 
     START = datetime(2021, 10, 26)
@@ -194,19 +205,16 @@ if __name__ == "__main__":
         stringency_raw, "CountryCode", "Date", START, END, date_format="%Y%m%d"
     )
     country_raw = join_auxiliary_dataset(
-        country_raw,
-        stringency_daily_avg,
-        [
-            "C1_School closing",
-            "C2_Workplace closing",
-            "C3_Cancel public events",
-            "C4_Restrictions on gatherings",
-            "C5_Close public transport",
-            "C6_Stay at home requirements",
-            "C7_Restrictions on internal movement",
-            "C8_International travel controls",
-        ],
+        country_raw, stringency_daily_avg, STRINGENCY_COLUMNS
     )
 
-    print(country_raw)
-    print(country_raw.dtypes)
+    # Join the income group
+    country_raw = join_auxiliary_dataset(
+        country_raw,
+        "./data/income_group_wb.csv",
+        ["IncomeGroup"],
+        aux_index_col="Country Code",
+        is_numerical=False,
+    )
+
+    country_raw.to_csv(f"./preprocessed-{datetime.now()}.csv")
