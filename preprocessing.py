@@ -73,7 +73,7 @@ def join_auxiliary_dataset(
     # Replace the null values with NaN and drop the rows
     aux_frame = aux_frame.replace(na_value, pd.NA).dropna()
 
-    # If data is numerical, convert to float 65
+    # If data is numerical, convert to float
     if is_numerical:
         aux_frame = aux_frame.astype(float)
 
