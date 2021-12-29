@@ -146,8 +146,8 @@ if __name__ == "__main__":
         "continent",
         "new_cases_per_million",
         "new_deaths_per_million",
-        "new_vaccinations_smoothed_per_million",
-        "new_people_vaccinated_smoothed_per_hundred",
+        "total_vaccinations_per_hundred",
+        "people_vaccinated_per_hundred",
         "population",
         "life_expectancy",
     ]
@@ -217,4 +217,4 @@ if __name__ == "__main__":
         is_numerical=False,
     )
 
-    country_raw.to_csv(f"./preprocessed-{datetime.now()}.csv")
+    country_raw.to_csv(f"./output/preprocessed-{datetime.now()}.csv")
