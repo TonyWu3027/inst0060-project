@@ -2,3 +2,4 @@
 .DS_Store
 fomlads/
 **/__pycache__/
+output/
