@@ -10,7 +10,7 @@ This is the code archive by Group E for the *INST0060* Group Project.
 
 ### Representation and Basis Function
 
-## Partition
+### Partition
 
 ### Algorithm
 
