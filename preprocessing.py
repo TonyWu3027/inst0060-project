@@ -1,21 +1,24 @@
 from datetime import datetime
 from os import PathLike
-from typing import List
+from typing import List, Union
 
 import pandas as pd
+from pandas import DataFrame
 
 
-def load_covid_frame(file_path: PathLike, columns: List[str] = []) -> pd.DataFrame:
+def load_covid_frame(
+    file_path: Union[PathLike, str], columns: List[str] = []
+) -> DataFrame:
     """Load required columns in the "Our World In Data"
     COVID-19 dataset as a DataFrame. If no column is given,
     all columns in the original dataset will be loaded.
 
     Args:
-        file_path (PathLike): the file path to the CSV dataset
+        file_path (PathLike | str): the file path to the CSV dataset
         columns (List[str], optional): the required columns. Defaults to [].
 
     Returns:
-        pd.DataFrame: the resultant DataFrame
+        DataFrame: the resultant DataFrame
     """
 
     covid_frame = pd.read_csv(file_path)
@@ -28,13 +31,13 @@ def load_covid_frame(file_path: PathLike, columns: List[str] = []) -> pd.DataFra
 
 
 def join_auxiliary_dataset(
-    input: pd.DataFrame,
-    file_path: PathLike,
+    input: DataFrame,
+    auxiliary: Union[str, PathLike, DataFrame],
     columns: List[str],
-    aux_index_col: str,
+    aux_index_col: str = "",
     na_value: str = "",
     is_numerical: bool = True,
-) -> pd.DataFrame:
+) -> DataFrame:
     """Join the required columns in an auxiliary dataset
     to the original DataFrame with empty entries dropped
 
@@ -42,24 +45,30 @@ def join_auxiliary_dataset(
         the auxiliary dataset needs to be indexed with ISO country code
 
     Args:
-        input (pd.DataFrame): the input DataFrame, indexed with ISO country code
-        file_path (PathLike): the file path to the auxiliary CSV dataset
+        input (DataFrame): the input DataFrame, indexed with ISO country code
+        auxiliary (str | DataFrame | PathLike): the path to or the DataFrame of the auxiliary dataset.
+        Should the DataFrame be given, it should be indexed with `aux_index_col`
         columns (List[str]): the required columns in the auxiliary dataset
-        aux_index_col (str): the index column in the auxiliary DataFrame
+        aux_index_col (str): Default to "". the index column in the auxiliary DataFrame
         na_value (str): Default to "". The representation for NaN value in the auxiliary dataset
         is_numerical (bool): Default to True. Whether the data is numerical or not
     Raises:
         ValueError: raised if `columns` is empty
 
     Returns:
-        pd.DataFrame: the resultant dataset
+        DataFrame: the resultant dataset
     """
 
     if not columns:
         raise ValueError("Required column(s) in the auxiliary dataset is not specified")
 
+    if isinstance(auxiliary, (str, PathLike)):
+        aux_frame = pd.read_csv(auxiliary).set_index(aux_index_col)
+    else:
+        aux_frame = auxiliary
+
     # Read the required columns in the auxiliary CSV with given index
-    aux_frame = pd.read_csv(file_path).set_index(aux_index_col)[columns]
+    aux_frame = aux_frame[columns]
 
     # Replace the null values with NaN and drop the rows
     aux_frame = aux_frame.replace(na_value, pd.NA).dropna()
@@ -75,23 +84,32 @@ def join_auxiliary_dataset(
 
 
 def average_over_date_range(
-    input: pd.DataFrame, index_col: str, start_date: datetime, end_date: datetime
-) -> pd.DataFrame:
+    input: DataFrame,
+    index_col: str,
+    date_col: str,
+    start_date: datetime,
+    end_date: datetime,
+    date_format: str = "%Y-%m-%d",
+    is_covid: bool = False,
+) -> DataFrame:
     """Calculate the daily average of all data attributes in dataset
     for each country in a given period of time.
 
     Args:
-        input (pd.DataFrame): the input DataFrame
+        input (DataFrame): the input DataFrame
         index_col (str): the index column in `input`
+        date_col (str): the column label for date
         start_date (date): start date inclusively
         end_date (date): end date inclusively
+        date_format (str): Defualt to "%Y-%m-%d". The format of date in the dataset
+        is_covid (bool): Default to False. Whether the input is the OWID COVID-19 Dataset
 
     Raises:
         ValueError: raised when `end_date` is earlier than the `start_date`
         KeyError: raised when `index_col` is not given
 
     Returns:
-        pd.DataFrame: the resultant DataFrame, indexed with `index_col`
+        DataFrame: the resultant DataFrame, indexed with `index_col`
     """
 
     if end_date < start_date:
@@ -101,12 +119,19 @@ def average_over_date_range(
         raise KeyError("Index columns not given")
 
     # Select the date within the range
-    input["date"] = pd.to_datetime(input["date"])
-    mask = (input["date"] > start_date) & (input["date"] < end_date)
+    input[date_col] = pd.to_datetime(input[date_col], format=date_format)
+    mask = (input[date_col] >= start_date) & (input[date_col] <= end_date)
     result = input.loc[mask]
 
+    by = [index_col]
+
+    # A temporary workaround for the OWID COVID-19 dataset
+    # TODO: general solution for all categorical columns
+    if is_covid:
+        by.append("continent")
+
     # Take the daily average for each country and set index column
-    result = result.groupby([index_col, "continent"], as_index=False).mean()
+    result = result.groupby(by, as_index=False).mean()
     result.set_index(index_col, inplace=True)
 
     return result
@@ -132,7 +157,9 @@ if __name__ == "__main__":
     START = datetime(2021, 10, 26)
     END = datetime(2021, 11, 26)
 
-    country_raw = average_over_date_range(raw, "iso_code", START, END)
+    country_raw = average_over_date_range(
+        raw, "iso_code", "date", START, END, is_covid=True
+    )
 
     # Join GDP per Capita
     country_raw = join_auxiliary_dataset(
@@ -159,6 +186,26 @@ if __name__ == "__main__":
         ["population_density"],
         "Country Code",
         "..",
+    )
+
+    # Join Stringency index attributes
+    stringency_raw = pd.read_csv("./data/stringency.csv")
+    stringency_daily_avg = average_over_date_range(
+        stringency_raw, "CountryCode", "Date", START, END, date_format="%Y%m%d"
+    )
+    country_raw = join_auxiliary_dataset(
+        country_raw,
+        stringency_daily_avg,
+        [
+            "C1_School closing",
+            "C2_Workplace closing",
+            "C3_Cancel public events",
+            "C4_Restrictions on gatherings",
+            "C5_Close public transport",
+            "C6_Stay at home requirements",
+            "C7_Restrictions on internal movement",
+            "C8_International travel controls",
+        ],
     )
 
     print(country_raw)
