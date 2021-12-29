@@ -1,7 +1,9 @@
-from os import PathLike
-import pandas as pd
-from typing import List
 from datetime import datetime
+from os import PathLike
+from typing import List
+
+import pandas as pd
+import numpy as np
 
 
 def load_covid_frame(file_path: PathLike, columns: List[str] = []) -> pd.DataFrame:
@@ -26,7 +28,7 @@ def load_covid_frame(file_path: PathLike, columns: List[str] = []) -> pd.DataFra
     return covid_frame
 
 
-def join_auxiliary_dataset(input: pd.DataFrame, file_path: PathLike, columns: List[str], input_index_col: str, aux_index_col: str) -> pd.DataFrame:
+def join_auxiliary_dataset(input: pd.DataFrame, file_path: PathLike, columns: List[str], aux_index_col: str, na_value: str = "", is_numerical:bool = True) -> pd.DataFrame:
     """Join the required columns in an auxiliary dataset
     to the original DataFrame with empty entries dropped
 
@@ -37,9 +39,9 @@ def join_auxiliary_dataset(input: pd.DataFrame, file_path: PathLike, columns: Li
         input (pd.DataFrame): the input DataFrame, indexed with ISO country code
         file_path (PathLike): the file path to the auxiliary CSV dataset
         columns (List[str]): the required columns in the auxiliary dataset
-        input_index_col (str): the index column in the input DataFrame
         aux_index_col (str): the index column in the auxiliary DataFrame
-
+        na_value (str): Default to "". The representation for NaN value in the auxiliary dataset
+        is_numerical (bool): Default to True. Whether the data is numerical or not
     Raises:
         ValueError: raised if `columns` is empty
 
@@ -51,10 +53,16 @@ def join_auxiliary_dataset(input: pd.DataFrame, file_path: PathLike, columns: Li
         raise ValueError(
             "Required column(s) in the auxiliary dataset is not specified")
 
-    aux_frame = pd.read_csv(file_path)[[columns]]
-
-    aux_frame.set_index(aux_index_col)
-
+    # Read the required columns in the auxiliary CSV with given index
+    aux_frame = pd.read_csv(file_path).set_index(aux_index_col)[columns]
+    
+    # Replace the null values with NaN and drop the rows
+    aux_frame = aux_frame.replace(na_value, pd.NA).dropna()
+        
+    # If data is numerical, convert to float 65
+    if is_numerical:  
+        aux_frame = aux_frame.astype(float)
+        
     # Join the aux_frame on ISO and drop empty row entries
     result = input.join(aux_frame).dropna()
 
@@ -92,25 +100,45 @@ def average_over_date_range(input: pd.DataFrame, index_col: str, start_date: dat
     result = input.loc[mask]
 
     # Take the daily average for each country and set index column
-    result = result.groupby([index_col, 'continent']).mean()
+    result = result.groupby([index_col, 'continent'], as_index=False).mean()
     result.set_index(index_col, inplace=True)
 
     return result
 
 
 if __name__ == "__main__":
-    with open("./columns.txt") as f:
-        cols = f.readlines()
+    from preprocessing import *
 
-        for i in range(len(cols)):
-            cols[i] = cols[i].replace("\n", "")
+    COVID_COLUMNS = [
+        "iso_code",
+        "date",
+        "continent",
+        "new_cases_per_million",
+        "new_deaths_per_million",
+        "new_vaccinations_smoothed_per_million",
+        "new_people_vaccinated_smoothed_per_hundred",
+        "population",
+        "life_expectancy"
+    ]
 
-        raw = load_covid_frame("./covid.csv", cols)
+    raw = load_covid_frame("./covid.csv", COVID_COLUMNS)
 
-        START = datetime(2021, 10, 26)
-        END = datetime(2021, 11, 26)
+    START = datetime(2021, 10, 26)
+    END = datetime(2021, 11, 26)
 
-        country_raw = average_over_date_range(raw, 'iso_code', START, END)
-        print(country_raw)
+    country_raw = average_over_date_range(raw, 'iso_code', START, END)
 
-        # print(country_raw.isna().sum())
+    # Join GDP per Capita
+    country_raw = join_auxiliary_dataset(
+        country_raw, './data/gdp_per_capita_wb.csv', ["gdp_per_capita"], "Country Code", "..")
+
+    # Join Population ages 65+
+    country_raw = join_auxiliary_dataset(country_raw, './data/65_above_share_wb.csv', [
+                                            "population_ages_65_and_above"], "Country Code", "..")
+
+    # Join Population Density
+    country_raw = join_auxiliary_dataset(
+        country_raw, './data/pop_den_wb.csv', ["population_density"], "Country Code", "..")
+
+    print(country_raw)
+    print(country_raw.dtypes)
