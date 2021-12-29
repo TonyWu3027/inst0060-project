@@ -91,11 +91,10 @@ def average_over_date_range(input: pd.DataFrame, index_col: str, start_date: dat
     mask = (input['date'] > start_date) & (input['date'] < end_date)
     result = input.loc[mask]
 
-    # Take the daily average for each country
-    result = result.groupby([index_col, 'continent'], as_index=False).mean()
-    result.set_index(index_col)
-    
-    
+    # Take the daily average for each country and set index column
+    result = result.groupby([index_col, 'continent']).mean()
+    result.set_index(index_col, inplace=True)
+
     return result
 
 
@@ -108,10 +107,10 @@ if __name__ == "__main__":
 
         raw = load_covid_frame("./covid.csv", cols)
 
-        start = datetime(2021, 10, 26)
-        end = datetime(2021, 11, 26)
+        START = datetime(2021, 10, 26)
+        END = datetime(2021, 11, 26)
 
-        country_raw = average_over_date_range(raw, 'iso_code', start, end)
+        country_raw = average_over_date_range(raw, 'iso_code', START, END)
         print(country_raw)
-        
+
         # print(country_raw.isna().sum())
