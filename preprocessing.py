@@ -49,7 +49,7 @@ def join_auxiliary_dataset(
         auxiliary (str | DataFrame | PathLike): the path to or the DataFrame of the auxiliary dataset.
         Should the DataFrame be given, it should be indexed with `aux_index_col`
         columns (List[str]): the required columns in the auxiliary dataset
-        aux_index_col (str): Default to "". the index column in the auxiliary DataFrame
+        aux_index_col (str): Default to "". The index column in the auxiliary DataFrame
         na_value (str): Default to "". The representation for NaN value in the auxiliary dataset
         is_numerical (bool): Default to True. Whether the data is numerical or not
     Raises:
@@ -63,21 +63,25 @@ def join_auxiliary_dataset(
         raise ValueError("Required column(s) in the auxiliary dataset is not specified")
 
     if isinstance(auxiliary, (str, PathLike)):
+        # If a file path is given
+        # Read the CSV as a DataFrame and set index
         aux_frame = pd.read_csv(auxiliary).set_index(aux_index_col)
     else:
-        aux_frame = auxiliary
+        # If a DataFrame is given,
+        # Use a copy of the DataFrame
+        aux_frame = auxiliary.copy()
 
     # Read the required columns in the auxiliary CSV with given index
     aux_frame = aux_frame[columns]
 
-    # Replace the null values with NaN and drop the rows
+    # Replace the null values with NA and drop the rows
     aux_frame = aux_frame.replace(na_value, pd.NA).dropna()
 
     # If data is numerical, convert to float
     if is_numerical:
         aux_frame = aux_frame.astype(float)
 
-    # Join the aux_frame on ISO and drop empty row entries
+    # Join the data frames on ISO Country Code and drop empty row entries
     result = input.join(aux_frame).dropna()
 
     return result
