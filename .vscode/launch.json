@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "./main.py",
             "args": [
-                "--filepath", "./1.csv",
+                "./covid.csv",
             ],
             "console": "integratedTerminal"
         }
