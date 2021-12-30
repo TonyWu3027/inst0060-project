@@ -16,7 +16,7 @@ python3 main.py ./covid.csv
 
 ### Data Preprocessing
 
-First of all, we rule out the countries which lack valid information. By jointing serval charts and dividing countries into groups, we obtain a data frame, which for each row represents a particular country and its corresponding index.
+First of all, we rule out the countries which lack valid information. By jointing several charts and dividing countries into groups, we obtain a data frame, which for each row represents a particular country and its corresponding index.
 
 Overall, We will work on the daily average of all index within a month period.
 
@@ -28,9 +28,10 @@ Overall, We will work on the daily average of all index within a month period.
 
 ### Evaluation
 
-In order the evaluate the algorithm, we compare the prediction and actual value by 
--	Ploting a confusion matrix.
--	Calculating its F1 score. The higher F1 score stand for a more accurate algorithm.
+In order the evaluate the algorithm, we compare the prediction and actual value by
+
+- Plotting a confusion matrix.
+- Calculating its F1 score. The higher F1 score stand for a more accurate algorithm.
 
 ## Contributing
 
