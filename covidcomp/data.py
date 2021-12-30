@@ -1,10 +1,10 @@
 import os
 from datetime import datetime
 from os import PathLike
-from typing import List, Union
+from typing import Dict, List, Tuple, Union
 
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from config import DATA_DIR, OUTPUT_DIR
 
@@ -18,8 +18,14 @@ class RawRepresentation:
     START = datetime(2021, 10, 26)
     END = datetime(2021, 11, 26)
 
+    # Target column
+    TARGET_COL = "new_deaths_per_million"
+
+    # Columns that can be used to partition
+    PARTITION_COLS = ["continent", "income_group"]
+
     # Required columns in the OWID dataset
-    OWID_COLUMNS = [
+    OWID_COLS = [
         "iso_code",
         "date",
         "continent",
@@ -32,7 +38,7 @@ class RawRepresentation:
     ]
 
     # Required columns in the stringency dataset
-    STRINGENCY_COLUMNS = [
+    STRINGENCY_COLS = [
         "C1_School closing",
         "C2_Workplace closing",
         "C3_Cancel public events",
@@ -46,7 +52,7 @@ class RawRepresentation:
     def __init__(self, file_path: Union[PathLike, str]):
 
         # Load the "Our World In Data" COVID-19 Dataset with required columns
-        owid_frame = self.load_data_frame(file_path, self.OWID_COLUMNS)
+        owid_frame = self.load_data_frame(file_path, self.OWID_COLS)
 
         # Compute the daily average in the date range
         self.__covid_frame = self.average_over_date_range(
@@ -80,7 +86,7 @@ class RawRepresentation:
         # Join the income group
         self.__join_auxiliary_dataset(
             os.path.join(DATA_DIR, "income_group_wb.csv"),
-            ["IncomeGroup"],
+            ["income_group"],
             aux_index_col="Country Code",
             is_numerical=False,
         )
@@ -95,7 +101,7 @@ class RawRepresentation:
             self.END,
             date_format="%Y%m%d",
         )
-        self.__join_auxiliary_dataset(stringency_daily_avg, self.STRINGENCY_COLUMNS)
+        self.__join_auxiliary_dataset(stringency_daily_avg, self.STRINGENCY_COLS)
 
     @property
     def frame(self) -> DataFrame:
@@ -252,3 +258,56 @@ class RawRepresentation:
         self.__covid_frame.to_csv(
             os.path.join(OUTPUT_DIR, f"preprocessed-{datetime.now()}.csv")
         )
+
+    def get_flat_representation(self) -> Tuple[DataFrame, Series]:
+        """Get the flat raw representation of the dataset
+
+        Returns:
+            Tuple[DataFrame, Series]: the flat input and the flat target
+        """
+
+        raw_input = self.__covid_frame.drop(
+            columns=[*self.PARTITION_COLS, self.TARGET_COL]
+        )
+        raw_target = self.__covid_frame[self.TARGET_COL]
+
+        return raw_input, raw_target
+
+    def get_partitioned_representation(
+        self, partition_col: str
+    ) -> Dict[str, Tuple[DataFrame, Series]]:
+        """Get a raw representation of the dataset partitioned
+        by the specified column
+
+        Args:
+            partition_col (str): the partitioning column
+            (e.g. `"continent"`, `"income_group"`)
+
+        Raises:
+            ValueError: raised when `partition_col` is not a categorical column
+
+        Returns:
+            Dict[str, Tuple[DataFrame, Series]]: {category: (input, target)}.
+            For instance, when partitioned by continent, the output might look like:
+            `{"Asia": (raw_input_for_asia, raw_target_for_asia), "Europe": (..), ...}`
+        """
+
+        if partition_col not in self.PARTITION_COLS:
+            raise ValueError("The partitioning column is invalid")
+
+        # Get a list of categories with the partitioning method
+        categories = self.__covid_frame[partition_col].unique().tolist()
+
+        result = dict()
+
+        for category in categories:
+            partitioned_frame = self.__covid_frame.loc[
+                self.__covid_frame[partition_col] == category
+            ]
+            partitioned_input = partitioned_frame.drop(
+                columns=[*self.PARTITION_COLS, self.TARGET_COL]
+            )
+            partitioned_target = partitioned_frame[self.TARGET_COL]
+            result[category] = (partitioned_input, partitioned_target)
+
+        return result
