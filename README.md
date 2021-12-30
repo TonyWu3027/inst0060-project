@@ -4,6 +4,14 @@ This is the code archive by Group E for the *INST0060* Group Project.
 
 ## How to Use
 
+To conduct the experiment, the [OWID COVID-19 Dataset](https://covid.ourworldindata.org/data/owid-covid-data.csv) needs to be provided.
+
+Start the experiment with `main.py` using command-line arguments. For instance:
+
+```bash
+python3 main.py ./covid.csv
+```
+
 ## How it Works
 
 ### Data Preprocessing
