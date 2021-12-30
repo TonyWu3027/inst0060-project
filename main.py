@@ -36,6 +36,13 @@ def main():
     raw = RawRepresentation(file_path)
     raw.export_csv()
 
+    flat_input, flat_target = raw.get_flat_representation()
+    print(flat_input)
+    print(flat_target)
+
+    partitioned_by_continent = raw.get_partitioned_representation("continent")
+    print(partitioned_by_continent.keys())
+
 
 if __name__ == "__main__":
     main()
