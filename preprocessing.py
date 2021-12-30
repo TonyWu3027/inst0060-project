@@ -46,11 +46,13 @@ def join_auxiliary_dataset(
 
     Args:
         input (DataFrame): the input DataFrame, indexed with ISO country code
-        auxiliary (str | DataFrame | PathLike): the path to or the DataFrame of the auxiliary dataset.
+        auxiliary (str | DataFrame | PathLike): the path to
+        or the DataFrame of the auxiliary dataset.
         Should the DataFrame be given, it should be indexed with `aux_index_col`
         columns (List[str]): the required columns in the auxiliary dataset
         aux_index_col (str): Default to "". The index column in the auxiliary DataFrame
-        na_value (str): Default to "". The representation for NaN value in the auxiliary dataset
+        na_value (str): Default to "". The representation for NaN value
+        in the auxiliary dataset
         is_numerical (bool): Default to True. Whether the data is numerical or not
     Raises:
         ValueError: raised if `columns` is empty
@@ -105,8 +107,9 @@ def average_over_date_range(
         date_col (str): the column label for date
         start_date (date): start date inclusively
         end_date (date): end date inclusively
-        date_format (str): Defualt to "%Y-%m-%d". The format of date in the dataset
-        is_covid (bool): Default to False. Whether the input is the OWID COVID-19 Dataset
+        date_format (str): Default to "%Y-%m-%d". The format of date in the dataset
+        is_covid (bool): Default to False.
+        Whether the input is the OWID COVID-19 Dataset
 
     Raises:
         ValueError: raised when `end_date` is earlier than the `start_date`
@@ -142,7 +145,6 @@ def average_over_date_range(
 
 
 if __name__ == "__main__":
-    from preprocessing import *
 
     COVID_COLUMNS = [
         "iso_code",
