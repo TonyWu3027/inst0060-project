@@ -3,8 +3,10 @@ from datetime import datetime
 from os import PathLike
 from typing import Dict, List, Tuple, Union
 
+import numpy as np
 import pandas as pd
-from pandas import DataFrame, Series
+from pandas import DataFrame
+from pandas.core.tools import numeric
 
 from config import DATA_DIR, OUTPUT_DIR
 
@@ -259,23 +261,23 @@ class RawRepresentation:
             os.path.join(OUTPUT_DIR, f"preprocessed-{datetime.now()}.csv")
         )
 
-    def get_flat_representation(self) -> Tuple[DataFrame, Series]:
+    def get_flat_representation(self) -> Tuple[DataFrame, DataFrame]:
         """Get the flat raw representation of the dataset
 
         Returns:
-            Tuple[DataFrame, Series]: the flat input and the flat target
+            Tuple[DataFrame, DataFrame]: the flat input and the flat target
         """
 
         raw_input = self.__covid_frame.drop(
             columns=[*self.PARTITION_COLS, self.TARGET_COL]
         )
-        raw_target = self.__covid_frame[self.TARGET_COL]
+        raw_target = self.__covid_frame[[self.TARGET_COL]]
 
         return raw_input, raw_target
 
     def get_partitioned_representation(
         self, partition_col: str
-    ) -> Dict[str, Tuple[DataFrame, Series]]:
+    ) -> Dict[str, Tuple[DataFrame, DataFrame]]:
         """Get a raw representation of the dataset partitioned
         by the specified column
 
@@ -287,7 +289,7 @@ class RawRepresentation:
             ValueError: raised when `partition_col` is not a categorical column
 
         Returns:
-            Dict[str, Tuple[DataFrame, Series]]: {category: (input, target)}.
+            Dict[str, Tuple[DataFrame, DataFrame]]: {category: (input, target)}.
             For instance, when partitioned by continent, the output might look like:
             `{"Asia": (raw_input_for_asia, raw_target_for_asia), "Europe": (..), ...}`
         """
@@ -307,7 +309,137 @@ class RawRepresentation:
             partitioned_input = partitioned_frame.drop(
                 columns=[*self.PARTITION_COLS, self.TARGET_COL]
             )
-            partitioned_target = partitioned_frame[self.TARGET_COL]
+            partitioned_target = partitioned_frame[[self.TARGET_COL]]
             result[category] = (partitioned_input, partitioned_target)
 
         return result
+
+    # TODO: Implement hist() to plot the histograms of the columns
+
+
+class DerivedRepresentation:
+    """The derived representation generated from
+    pairing the raw representation into raw features
+    and apply basis function to these raw features
+    """
+
+    SKEWED_COLUMNS = [
+        "new_cases_per_million",
+        "population",
+        "life_expectancy",
+        "gdp_per_capita",
+        "population_density",
+        "population_ages_65_and_above",
+    ]
+
+    def __init__(self, input: DataFrame, target: DataFrame):
+
+        # Pair the raw input
+        self.__derived_input = self.pair(self.preprocess_input_representation(input))
+
+        # Encode the target as binary data and pair
+        self.__derived_target = self.pair(target).applymap(self.__binary_mapping)
+
+    def pair(self, frame: DataFrame) -> DataFrame:
+        """The basis function that pairs the data points
+        in the DataFrame by taking the difference between
+        the members in a pair.
+
+        Equation:
+            phi_{ij} = x_i - x_j
+
+        Args:
+            frame (DataFrame): the input (N*D) or target(N*1) DataFrame
+
+        Returns:
+            DataFrame: the paired input (N^2*D) or target(N^2*1) DataFrame
+        """
+
+        # Concatenate the vectors for the paired DataFrame
+        columns = frame.columns
+        paired_frame = (
+            frame.assign(key=1).merge(frame.assign(key=1), on="key").drop("key", 1)
+        )
+
+        # Take the differences between the vectors
+        derived_frame = pd.DataFrame()
+        derived_frame[columns] = np.subtract(
+            paired_frame[[f"{col}_x" for col in columns]],
+            paired_frame[[f"{col}_y" for col in columns]],
+        )
+
+        return derived_frame
+
+    def log_columns(self, frame: DataFrame, columns: List[str]) -> DataFrame:
+        """Take the log of the specified columns
+        in the given DataFrame. Rename the columns
+        as <column_label>_log.
+
+        Args:
+            frame (DataFrame): a given DataFrame
+            columns (List[str]): the columns to be taken log
+
+        Returns:
+            DataFrame: the resultant DatFrame
+        """
+
+        result = frame.copy()
+
+        result[[f"{col}_log" for col in columns]] = np.log(result[columns])
+
+        result.drop(columns=columns, inplace=True)
+
+        return result
+
+    def preprocess_input_representation(self, input: DataFrame) -> DataFrame:
+        """Preprocess the input data representation
+
+        Args:
+            input (DataFrame): the raw input data presentation
+
+        Returns:
+            DataFrame: the preprocessed raw input data presentation
+        """
+
+        # Take the log of the skewed columns in the input
+        result = self.log_columns(input, self.SKEWED_COLUMNS)
+
+        return result
+
+    def __binary_mapping(self, x: numeric) -> int:
+        """A helper function to map a non-negative number
+        to 1 and a negative number to 0
+
+        Args:
+            x (numeric): the number
+
+        Returns:
+            int: `1` when x >= 0, `0` when x < 0
+        """
+
+        if x >= 0:
+            return 1
+        else:
+            return 0
+
+    @property
+    def input(self) -> DataFrame:
+        """Get a copy of the derived input
+
+        Returns:
+            DataFrame: a copy of the derived input
+        """
+        return self.__derived_input.copy()
+
+    @property
+    def target(self) -> DataFrame:
+        """Get a copy of the derived target
+
+        Returns:
+            DataFrame: a copy of the derived target
+        """
+        return self.__derived_target.copy()
+
+    # TODO: Implement basis function
+
+    # TODO: Implement hist() to plot the histograms of the columns
