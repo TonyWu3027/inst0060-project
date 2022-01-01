@@ -338,7 +338,9 @@ class DerivedRepresentation:
         self.__derived_input = self.pair(self.preprocess_input_representation(input))
 
         # Encode the target as binary data and pair
-        self.__derived_target = self.pair(target).applymap(self.__binary_mapping)
+        self.__derived_target = (
+            self.pair(target).applymap(self.__binary_mapping).astype(int)
+        )
 
     def pair(self, frame: DataFrame) -> DataFrame:
         """The basis function that pairs the data points
