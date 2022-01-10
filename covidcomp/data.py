@@ -5,10 +5,13 @@ from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from numpy import ndarray
 from pandas import DataFrame
 from pandas.core.tools import numeric
+from scipy.stats import zscore
 
 from config import DATA_DIR, OUTPUT_DIR
+from fomlads.evaluate.eval_regression import train_and_test_filter
 
 
 class RawRepresentation:
@@ -33,7 +36,6 @@ class RawRepresentation:
         "continent",
         "new_cases_per_million",
         "new_deaths_per_million",
-        "total_vaccinations_per_hundred",
         "people_vaccinated_per_hundred",
         "population",
         "life_expectancy",
@@ -332,17 +334,63 @@ class DerivedRepresentation:
         "population_ages_65_and_above",
     ]
 
-    def __init__(self, input: DataFrame, target: DataFrame):
+    def __init__(
+        self, input: DataFrame, target: DataFrame, test_fraction: float = None
+    ):
+        """Construct a DerivedRepresentation instance
 
-        # Pair the raw input
-        self.__derived_input = self.pair(self.preprocess_input_representation(input))
+        Args:
+            input (DataFrame): the raw representation of the dataset
+                from RawRepresentation
+            target (DataFrame): the target column of the dataset from RawRepresentation
+            test_fraction (float, optional): the ratio of test data in train-test split.
+                Defaults to None.
+        """
+        N = input.shape[0]
 
-        # Encode the target as binary data and pair
-        self.__derived_target = (
-            self.pair(target).applymap(self.__binary_mapping).astype(int)
+        # Preprocess inputs
+        pre_processed_inputs = self.preprocess_input_representation(input)
+
+        # Split the training and testing countries
+        train_filter, test_filter = train_and_test_filter(N, test_fraction)
+
+        raw_train_inputs = pre_processed_inputs[train_filter]
+        raw_test_inputs = pre_processed_inputs[test_filter]
+
+        raw_train_targets = target[train_filter]
+        raw_test_targets = target[test_filter]
+
+        # Pair the inputs and targets
+        self.__derived_train_inputs, self.__derived_train_targets = self.pair(
+            raw_train_inputs, raw_train_targets
+        )
+        self.__derived_test_inputs, self.__derived_test_targets = self.pair(
+            raw_test_inputs, raw_test_targets
         )
 
-    def pair(self, frame: DataFrame) -> DataFrame:
+    def pair(
+        self, inputs: DataFrame, targets: DataFrame
+    ) -> Tuple[DataFrame, DataFrame]:
+        """Pair the inputs and targets all drop the pairs where i = j
+
+        Args:
+            inputs (DataFrame): raw and preprocessed inputs
+            targets (DataFrame): raw target
+
+        Returns:
+            Tuple[DataFrame, DataFrame]: the paired inputs and corresponding targets
+        """
+
+        # Pair inputs and targets
+        paired_inputs = self.__pair_frame(inputs)
+        paired_raw_targets = self.__pair_frame(targets)
+
+        # Encode the targets as binary classes
+        paired_targets = paired_raw_targets.applymap(self.__binary_mapping).astype(int)
+
+        return paired_inputs, paired_targets
+
+    def __pair_frame(self, frame: DataFrame) -> DataFrame:
         """The basis function that pairs the data points
         in the DataFrame by taking the difference between
         the members in a pair.
@@ -356,6 +404,7 @@ class DerivedRepresentation:
         Returns:
             DataFrame: the paired input (N^2*D) or target(N^2*1) DataFrame
         """
+        N, _ = frame.shape
 
         # Concatenate the vectors for the paired DataFrame
         columns = frame.columns
@@ -369,6 +418,10 @@ class DerivedRepresentation:
             paired_frame[[f"{col}_x" for col in columns]],
             paired_frame[[f"{col}_y" for col in columns]],
         )
+
+        # Drop the case when a country is paired with itself
+        duplicated_index = [i for i in range(0, N ** 2, N + 1)]
+        derived_frame = derived_frame.drop(duplicated_index)
 
         return derived_frame
 
@@ -393,6 +446,27 @@ class DerivedRepresentation:
 
         return result
 
+    def standardise_columns(self, frame: DataFrame, columns: List[str]) -> DataFrame:
+        """Compute the z-score of the specified columns
+        in the given DataFrame. Rename the columns
+        as <column_label>_standardised.
+
+        Args:
+            frame (DataFrame): a given DataFrame
+            columns (List[str]): the columns to be taken log
+
+        Returns:
+            DataFrame: the resultant DatFrame
+        """
+
+        result = frame.copy()
+
+        result[[f"{col}_zscore" for col in columns]] = zscore(result[columns])
+
+        result.drop(columns=columns, inplace=True)
+
+        return result
+
     def preprocess_input_representation(self, input: DataFrame) -> DataFrame:
         """Preprocess the input data representation
 
@@ -405,6 +479,11 @@ class DerivedRepresentation:
 
         # Take the log of the skewed columns in the input
         result = self.log_columns(input, self.SKEWED_COLUMNS)
+
+        # result = input
+
+        # Standardise the stringency indices in the input
+        result = self.standardise_columns(result, result.columns)
 
         return result
 
@@ -425,22 +504,40 @@ class DerivedRepresentation:
             return 0
 
     @property
-    def input(self) -> DataFrame:
-        """Get a copy of the derived input
+    def train_inputs(self) -> ndarray:
+        """Get a copy of the derived train inputs
 
         Returns:
-            DataFrame: a copy of the derived input
+            ndarray: the derived train inputs in ndarray
         """
-        return self.__derived_input.copy()
+        return self.__derived_train_inputs.to_numpy()
 
     @property
-    def target(self) -> DataFrame:
-        """Get a copy of the derived target
+    def train_targets(self) -> ndarray:
+        """Get a copy of the derived train targets
 
         Returns:
-            DataFrame: a copy of the derived target
+            ndarray: the derived train targets in ndarray
         """
-        return self.__derived_target.copy()
+        return self.__derived_train_targets.to_numpy()
+
+    @property
+    def test_inputs(self) -> ndarray:
+        """Get a copy of the derived test inputs
+
+        Returns:
+            ndarray: the derived test inputs in ndarray
+        """
+        return self.__derived_test_inputs.to_numpy()
+
+    @property
+    def test_targets(self) -> ndarray:
+        """Get a copy of the derived test targets
+
+        Returns:
+            ndarray: the derived test targets in ndarray
+        """
+        return self.__derived_test_targets.to_numpy()
 
     # TODO: Implement basis function
 
