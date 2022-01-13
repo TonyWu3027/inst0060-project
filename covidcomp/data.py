@@ -299,15 +299,22 @@ class RawRepresentation:
         if partition_col not in self.PARTITION_COLS:
             raise ValueError("The partitioning column is invalid")
 
+        # *A WORKAROUND FOR PARTITIONING WITH CONTINENTS*
+        # Since the numbers of countries in Oceania, South America,
+        # and North America are relatively smaller, we merge
+        # the 3 continents as "Other"
+        if partition_col == "continent":
+            df = self.__covid_frame.replace(["South America", "Oceania"], "Other")
+        else:
+            df = self.__covid_frame.copy()
+
         # Get a list of categories with the partitioning method
-        categories = self.__covid_frame[partition_col].unique().tolist()
+        categories = df[partition_col].unique().tolist()
 
         result = dict()
 
         for category in categories:
-            partitioned_frame = self.__covid_frame.loc[
-                self.__covid_frame[partition_col] == category
-            ]
+            partitioned_frame = df.loc[df[partition_col] == category]
             partitioned_input = partitioned_frame.drop(
                 columns=[*self.PARTITION_COLS, self.TARGET_COL]
             )
@@ -334,22 +341,25 @@ class DerivedRepresentation:
         "population_ages_65_and_above",
     ]
 
-    def __init__(
-        self, input: DataFrame, target: DataFrame, test_fraction: float = None
-    ):
+    def __init__(self, input: DataFrame, target: DataFrame, test_fraction: float = 0.5):
         """Construct a DerivedRepresentation instance
 
         Args:
             input (DataFrame): the raw representation of the dataset
                 from RawRepresentation
             target (DataFrame): the target column of the dataset from RawRepresentation
-            test_fraction (float, optional): the ratio of test data in train-test split.
-                Defaults to None.
+            test_fraction (float): a fraction (between 0 and 1) specifying the
+                proportion of the data to use as test data. Defaulted to 0.5.
         """
         N = input.shape[0]
 
         # Preprocess inputs
         pre_processed_inputs = self.preprocess_input_representation(input)
+
+        # All paired inputs and targets
+        self.__derived_inputs, self.__derived_targets = self.pair(
+            pre_processed_inputs, target
+        )
 
         # Split the training and testing countries
         train_filter, test_filter = train_and_test_filter(N, test_fraction)
@@ -483,7 +493,7 @@ class DerivedRepresentation:
         # result = input
 
         # Standardise the stringency indices in the input
-        result = self.standardise_columns(result, result.columns)
+        # result = self.standardise_columns(result, result.columns)
 
         return result
 
@@ -538,6 +548,26 @@ class DerivedRepresentation:
             ndarray: the derived test targets in ndarray
         """
         return self.__derived_test_targets.to_numpy()
+
+    @property
+    def inputs(self) -> ndarray:
+        """Get a copy of all derived inputs
+
+        Returns:
+            ndarray: the derived inputs in ndarray
+        """
+
+        return self.__derived_inputs.to_numpy()
+
+    @property
+    def targets(self) -> ndarray:
+        """Get a copy of all derived targets
+
+        Returns:
+            ndarray: the derived targets in ndarray
+        """
+
+        return self.__derived_targets.to_numpy()
 
     # TODO: Implement basis function
 
