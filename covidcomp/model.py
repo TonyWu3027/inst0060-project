@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 from numpy import ndarray
 
@@ -7,7 +9,46 @@ from fomlads.model.classification import (
 )
 
 
-class L2RegularisedLogisticRegression:
+class Model(ABC):
+    """The Abstract Base Class for models"""
+
+    @abstractmethod
+    def fit(self, inputs: ndarray, targets: ndarray) -> ndarray:
+        """
+        Fits a set of weights to the model
+
+        Args:
+            inputs (ndarray): an N*D matrix, each row is a data-point
+            targets (ndarray): N-dimension vector of target labels
+
+        Returns:
+            (ndarray): - a set of weights for the model
+        """
+        pass
+
+    @abstractmethod
+    def predict(
+        self,
+        inputs: ndarray,
+        decision_threshold: float = 0.5,
+        add_bias_term: bool = True,
+    ) -> ndarray:
+        """
+        Get prediction vector from the model.
+
+        Args:
+            inputs (ndarray): an N*D matrix of input data (or design matrix)
+            decision_threshold (float): the prediction probability above which
+                the output prediction is 1. Set to 0.5 for minimum misclassification
+            add_bias_term (bool): whether or not a bias term should be added
+                to the input or the design matrix
+        Returns:
+            (ndarray): an N-dimension vector of predictions
+        """
+        pass
+
+
+class L2RegularisedLogisticRegression(Model):
     """The L-2 Regularised Logistic Regression
     implemented with Iteratively Reweighted Least
     Squares algorithm and Newton-Raphson method
