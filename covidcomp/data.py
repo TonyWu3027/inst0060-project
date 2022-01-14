@@ -8,7 +8,6 @@ import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
 from pandas.core.tools import numeric
-from scipy.stats import zscore
 
 from config import DATA_DIR, OUTPUT_DIR
 from fomlads.evaluate.eval_regression import train_and_test_filter
@@ -263,7 +262,7 @@ class RawRepresentation:
             os.path.join(OUTPUT_DIR, f"preprocessed-{datetime.now()}.csv")
         )
 
-    def get_flat_representation(self) -> Tuple[DataFrame, DataFrame]:
+    def __get_flat_representation(self) -> Tuple[DataFrame, DataFrame]:
         """Get the flat raw representation of the dataset
 
         Returns:
@@ -277,15 +276,17 @@ class RawRepresentation:
 
         return raw_input, raw_target
 
-    def get_partitioned_representation(
-        self, partition_col: str
+    def get_representation(
+        self, partition_col: str = ""
     ) -> Dict[str, Tuple[DataFrame, DataFrame]]:
-        """Get a raw representation of the dataset partitioned
-        by the specified column
+        """Get a raw representation of the dataset. If the
+        `partition_col` is not give, a flat represention will be returned
 
         Args:
             partition_col (str): the partitioning column
-            (e.g. `"continent"`, `"income_group"`)
+                (e.g. `"continent"`, `"income_group"`).
+                Defaulted to ""
+
 
         Raises:
             ValueError: raised when `partition_col` is not a categorical column
@@ -296,7 +297,10 @@ class RawRepresentation:
             `{"Asia": (raw_input_for_asia, raw_target_for_asia), "Europe": (..), ...}`
         """
 
-        if partition_col not in self.PARTITION_COLS:
+        if partition_col == "":
+            result = {"Flat": self.__get_flat_representation()}
+            return result
+        elif partition_col not in self.PARTITION_COLS:
             raise ValueError("The partitioning column is invalid")
 
         # *A WORKAROUND FOR PARTITIONING WITH CONTINENTS*
@@ -456,27 +460,6 @@ class DerivedRepresentation:
 
         return result
 
-    def standardise_columns(self, frame: DataFrame, columns: List[str]) -> DataFrame:
-        """Compute the z-score of the specified columns
-        in the given DataFrame. Rename the columns
-        as <column_label>_standardised.
-
-        Args:
-            frame (DataFrame): a given DataFrame
-            columns (List[str]): the columns to be taken log
-
-        Returns:
-            DataFrame: the resultant DatFrame
-        """
-
-        result = frame.copy()
-
-        result[[f"{col}_zscore" for col in columns]] = zscore(result[columns])
-
-        result.drop(columns=columns, inplace=True)
-
-        return result
-
     def preprocess_input_representation(self, input: DataFrame) -> DataFrame:
         """Preprocess the input data representation
 
@@ -568,7 +551,3 @@ class DerivedRepresentation:
         """
 
         return self.__derived_targets.to_numpy()
-
-    # TODO: Implement basis function
-
-    # TODO: Implement hist() to plot the histograms of the columns
