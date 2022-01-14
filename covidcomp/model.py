@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from numpy import ndarray
 
+from fomlads.evaluate.eval_classification import eval_accuracy
 from fomlads.model.classification import (
     logistic_regression_predict,
     logistic_regression_prediction_probs,
@@ -117,6 +118,7 @@ class L2RegularisedLogisticRegression(Model):
         identity_matrix = np.identity(D)
 
         while update_magnitude > self.__termination_threshold:
+            print(update_magnitude)
             # calculate the current prediction vector for weights
             # we don't want to extend the inputs a second time so add_bias_term
             # is set to False
@@ -165,3 +167,17 @@ class L2RegularisedLogisticRegression(Model):
         return logistic_regression_predict(
             inputs, self.__weights, decision_threshold, add_bias_term
         )
+
+    def score(self, test_inputs: ndarray, test_targets: ndarray) -> float:
+        """Return the mean accuracy on the given test inputs and targets.
+
+        Args:
+            test_inputs (ndarray): an N*D inputs/design matrix of data points.
+            test_targets (ndarray): an D-dimension vector of true targets.
+        Returns:
+            (float): the mean accuracy on the given test inputs and targets
+        """
+
+        test_predicts = self.predict(test_inputs)
+        accuracy = eval_accuracy(test_targets, test_predicts)
+        return accuracy
