@@ -48,6 +48,18 @@ class Model(ABC):
         """
         pass
 
+    @abstractmethod
+    def score(self, test_inputs: ndarray, test_targets: ndarray) -> float:
+        """Return the mean accuracy on the given test inputs and targets.
+
+        Args:
+            test_inputs (ndarray): an N*D inputs/design matrix of data points.
+            test_targets (ndarray): an D-dimension vector of true targets.
+        Returns:
+            (float): the mean accuracy on the given test inputs and targets
+        """
+        pass
+
 
 class L2RegularisedLogisticRegression(Model):
     """The L-2 Regularised Logistic Regression
