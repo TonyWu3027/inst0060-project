@@ -308,7 +308,13 @@ class RawRepresentation:
         # and North America are relatively smaller, we merge
         # the 3 continents as "Other"
         if partition_col == "continent":
-            df = self.__covid_frame.replace(["South America", "Oceania"], "Other")
+            df = self.__covid_frame.replace(
+                ["South America", "Oceania", "North America"], "Other"
+            )
+        elif partition_col == "income_group":
+            df = self.__covid_frame.replace(
+                ["Low income", "Lower middle income"], "Low or lower middle income"
+            )
         else:
             df = self.__covid_frame.copy()
 
@@ -472,11 +478,6 @@ class DerivedRepresentation:
 
         # Take the log of the skewed columns in the input
         result = self.log_columns(input, self.SKEWED_COLUMNS)
-
-        # result = input
-
-        # Standardise the stringency indices in the input
-        # result = self.standardise_columns(result, result.columns)
 
         return result
 
