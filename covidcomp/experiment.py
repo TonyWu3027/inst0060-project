@@ -10,7 +10,47 @@ from .model import Model
 
 
 class ExperimentRunner:
-    def run_train_and_test(
+    def __init__(self):
+        pass
+
+    def model_selection(self):
+        pass
+
+    def run_partition_experiment(
+        self,
+        partitioned_dict: Dict[str, Tuple[DataFrame, DataFrame]],
+        model: Model,
+        label: str = "",
+        random_seed: any = 28,
+    ):
+        """Run the train and test experiment at the different test fractions:
+
+        Args:
+            partitioned_dict (Dict[str, Tuple[DataFrame, DataFrame]]):
+                `{"partition_name": (raw_inputs, raw_targets)}`
+            model (Model): the model to use
+            label (str, optional): name of the partition. (e.g. "Flat" or "Continent").
+                Defaults to "".
+            random_seed (any, optional): [description]. Defaults to 28.
+        """
+
+        np.random.seed(random_seed)
+
+        test_fractions = np.linspace(1, 4, num=7) / 10
+
+        accuracies = []
+
+        for test_fraction in test_fractions:
+            print(test_fraction)
+            accuracy = self.train_and_test(
+                partitioned_dict, model, label, test_fraction
+            )
+            accuracies.append(accuracy)
+
+        print(accuracies)
+
+    def train_and_test(
+        self,
         partitioned_dict: Dict[str, Tuple[DataFrame, DataFrame]],
         model: Model,
         label: str = "",
@@ -43,7 +83,7 @@ class ExperimentRunner:
             test_inputs = derived_continent.test_inputs
             test_targets = derived_continent.test_targets
 
-            print(f"Number of training pairs in {partition}: {train_inputs.shape[0]}")
+            # print(f"Number of training pairs in {partition}: {train_inputs.shape[0]}")
 
             model.fit(train_inputs, train_targets)
             test_predictions = model.predict(test_inputs)
@@ -53,9 +93,10 @@ class ExperimentRunner:
             accuracies.append(accuracy)
             partition_sizes.append(raw_input.shape[0])
 
-            print(f"\n{partition} Accuracy : {accuracy}")
+            # print(f"\n{partition} Accuracy : {accuracy}")
 
         partition_weights = np.divide(partition_sizes, len(partitioned_dict))
         weighted_avg_accuracy = np.average(accuracies, weights=partition_weights)
 
-        print(f"\nWeighted Mean Accuracy by {label} : {weighted_avg_accuracy}")
+        # print(f"\nWeighted Mean Accuracy by {label} : {weighted_avg_accuracy}")
+        return weighted_avg_accuracy
