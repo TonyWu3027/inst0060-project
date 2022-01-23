@@ -308,10 +308,10 @@ class RawRepresentation:
             df = self.__covid_frame.replace(
                 ["South America", "Oceania", "North America"], "Other"
             )
-        elif partition_col == "income_group":
-            df = self.__covid_frame.replace(
-                ["Low income", "Lower middle income"], "Low or lower middle income"
-            )
+        # elif partition_col == "income_group":
+        #     df = self.__covid_frame.replace(
+        #         ["Low income", "Lower middle income"], "Low or lower middle income"
+        #     )
         else:
             df = self.__covid_frame.copy()
 
@@ -502,6 +502,17 @@ class DerivedRepresentation:
 
         return self.__derived_targets.to_numpy()
 
+    def __min_max_normalisation(self, inputs: ndarray) -> ndarray:
+        """Normalise the inputs with min-max normalisation.
+
+        Args:
+            inputs (ndarray): N*D input data matrix
+
+        Returns:
+            ndarray: N*D min-max-normalised data matrix
+        """
+        return (inputs - inputs.min()) / (inputs.max() - inputs.min())
+
     def train_test_split(
         self, train_filter: ndarray, test_filter: ndarray
     ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
@@ -534,8 +545,8 @@ class DerivedRepresentation:
         )
 
         return (
-            derived_train_inputs.to_numpy(),
+            self.__min_max_normalisation(derived_train_inputs.to_numpy()),
             derived_train_targets.to_numpy(),
-            derived_test_inputs.to_numpy(),
+            self.__min_max_normalisation(derived_test_inputs.to_numpy()),
             derived_test_targets.to_numpy(),
         )
