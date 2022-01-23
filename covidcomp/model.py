@@ -86,8 +86,8 @@ class LogisticRegression(Model):
 
     def fit(self, inputs: ndarray, targets: ndarray) -> ndarray:
         """
-        Fits a set of weights to the L-2 regularised logistic regression model
-        using the iteratively reweighted least squares (IRLS) method (Rubin, 1983)
+        Fits a set of weights to the logistic regression model using
+        the iteratively reweighted least squares (IRLS) method (Rubin, 1983)
 
         Adapted from `fomlads.model.classification.logistic_regression_fit`
         by Dr Luke Dickens, at the Department of Information Studies, UCL
