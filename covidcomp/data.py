@@ -364,18 +364,19 @@ class DerivedRepresentation:
         N = input.shape[0]
 
         # Preprocess inputs
-        pre_processed_inputs = self.preprocess_input_representation(input)
+        self.__pre_processed_inputs = self.preprocess_input_representation(input)
+        self.__pre_processed_targets = target.copy()
 
         # All paired inputs and targets
         self.__derived_inputs, self.__derived_targets = self.pair(
-            pre_processed_inputs, target
+            self.__pre_processed_inputs, target
         )
 
         # Split the training and testing countries
         train_filter, test_filter = train_and_test_filter(N, test_fraction)
 
-        raw_train_inputs = pre_processed_inputs[train_filter]
-        raw_test_inputs = pre_processed_inputs[test_filter]
+        raw_train_inputs = self.__pre_processed_inputs[train_filter]
+        raw_test_inputs = self.__pre_processed_inputs[test_filter]
 
         raw_train_targets = target[train_filter]
         raw_test_targets = target[test_filter]
@@ -552,3 +553,41 @@ class DerivedRepresentation:
         """
 
         return self.__derived_targets.to_numpy()
+
+    def train_test_split(
+        self, train_filter: ndarray, test_filter: ndarray
+    ) -> Tuple[ndarray, ndarray, ndarray, ndarray]:
+        """Split the countries with given train and test filters
+        and pair the countries.
+
+        Args:
+            train_filter (ndarray): a binary 1-d array of countries.
+                A country is in training set if it has value `True`
+            test_filter (ndarray): a binary 1-d array of countries.
+                A country is in testing set if it has value `True`
+
+        Returns:
+            Tuple[ndarray, ndarray, ndarray, ndarray]:
+                (train_inputs, train_targets, test_inputs, test_targets)
+        """
+
+        raw_train_inputs = self.__pre_processed_inputs[train_filter]
+        raw_test_inputs = self.__pre_processed_inputs[test_filter]
+
+        raw_train_targets = self.__pre_processed_targets[train_filter]
+        raw_test_targets = self.__pre_processed_targets[test_filter]
+
+        # Pair the inputs and targets
+        derived_train_inputs, derived_train_targets = self.pair(
+            raw_train_inputs, raw_train_targets
+        )
+        derived_test_inputs, derived_test_targets = self.pair(
+            raw_test_inputs, raw_test_targets
+        )
+
+        return (
+            derived_train_inputs.to_numpy(),
+            derived_train_targets.to_numpy(),
+            derived_test_inputs.to_numpy(),
+            derived_test_targets.to_numpy(),
+        )
