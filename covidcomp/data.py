@@ -7,10 +7,8 @@ import numpy as np
 import pandas as pd
 from numpy import ndarray
 from pandas import DataFrame
-from pandas.core.tools import numeric
 
 from config import DATA_DIR, OUTPUT_DIR
-from fomlads.evaluate.eval_regression import train_and_test_filter
 
 
 class RawRepresentation:
@@ -184,7 +182,6 @@ class RawRepresentation:
         by = [index_col]
 
         # A temporary workaround for the OWID COVID-19 dataset
-        # TODO: general solution for all categorical columns
         if is_covid:
             by.append("continent")
 
@@ -333,8 +330,6 @@ class RawRepresentation:
 
         return result
 
-    # TODO: Implement hist() to plot the histograms of the columns
-
 
 class DerivedRepresentation:
     """The derived representation generated from
@@ -351,17 +346,14 @@ class DerivedRepresentation:
         "population_ages_65_and_above",
     ]
 
-    def __init__(self, input: DataFrame, target: DataFrame, test_fraction: float = 0.5):
+    def __init__(self, input: DataFrame, target: DataFrame):
         """Construct a DerivedRepresentation instance
 
         Args:
             input (DataFrame): the raw representation of the dataset
                 from RawRepresentation
             target (DataFrame): the target column of the dataset from RawRepresentation
-            test_fraction (float): a fraction (between 0 and 1) specifying the
-                proportion of the data to use as test data. Defaulted to 0.5.
         """
-        N = input.shape[0]
 
         # Preprocess inputs
         self.__pre_processed_inputs = self.preprocess_input_representation(input)
@@ -370,23 +362,6 @@ class DerivedRepresentation:
         # All paired inputs and targets
         self.__derived_inputs, self.__derived_targets = self.pair(
             self.__pre_processed_inputs, target
-        )
-
-        # Split the training and testing countries
-        train_filter, test_filter = train_and_test_filter(N, test_fraction)
-
-        raw_train_inputs = self.__pre_processed_inputs[train_filter]
-        raw_test_inputs = self.__pre_processed_inputs[test_filter]
-
-        raw_train_targets = target[train_filter]
-        raw_test_targets = target[test_filter]
-
-        # Pair the inputs and targets
-        self.__derived_train_inputs, self.__derived_train_targets = self.pair(
-            raw_train_inputs, raw_train_targets
-        )
-        self.__derived_test_inputs, self.__derived_test_targets = self.pair(
-            raw_test_inputs, raw_test_targets
         )
 
     def pair(
@@ -482,12 +457,12 @@ class DerivedRepresentation:
 
         return result
 
-    def __binary_mapping(self, x: numeric) -> int:
+    def __binary_mapping(self, x: float) -> int:
         """A helper function to map a non-negative number
         to 1 and a negative number to 0
 
         Args:
-            x (numeric): the number
+            x (float): the number
 
         Returns:
             int: `1` when x >= 0, `0` when x < 0
@@ -499,40 +474,13 @@ class DerivedRepresentation:
             return 0
 
     @property
-    def train_inputs(self) -> ndarray:
-        """Get a copy of the derived train inputs
+    def preprocessed_inputs(self) -> DataFrame:
+        """Get a copy of all preprocessed inputs
 
         Returns:
-            ndarray: the derived train inputs in ndarray
+            DataFrame: the preprocessed inputs
         """
-        return self.__derived_train_inputs.to_numpy()
-
-    @property
-    def train_targets(self) -> ndarray:
-        """Get a copy of the derived train targets
-
-        Returns:
-            ndarray: the derived train targets in ndarray
-        """
-        return self.__derived_train_targets.to_numpy()
-
-    @property
-    def test_inputs(self) -> ndarray:
-        """Get a copy of the derived test inputs
-
-        Returns:
-            ndarray: the derived test inputs in ndarray
-        """
-        return self.__derived_test_inputs.to_numpy()
-
-    @property
-    def test_targets(self) -> ndarray:
-        """Get a copy of the derived test targets
-
-        Returns:
-            ndarray: the derived test targets in ndarray
-        """
-        return self.__derived_test_targets.to_numpy()
+        return self.__pre_processed_inputs
 
     @property
     def inputs(self) -> ndarray:
