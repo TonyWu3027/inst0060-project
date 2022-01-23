@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 from numpy import ndarray
@@ -28,7 +28,7 @@ class ExperimentRunner:
     def run_partition_experiment(
         self,
         partitioned_dict: Dict[str, Tuple[DataFrame, DataFrame]],
-        label: str = "",
+        partitioning_method: str,
         random_seed: int = None,
     ) -> float:
         """Run the experiment on a particular partitioning method
@@ -39,8 +39,8 @@ class ExperimentRunner:
         Args:
             partitioned_dict (Dict[str, Tuple[DataFrame, DataFrame]]):
                 `{"partition_name": (raw_inputs, raw_targets)}`
-            label (str, optional): name of the partition. (e.g. "Flat" or "Continent")
-                Defaults to "".
+            partitioning_method (str, optional): name of the partition.
+                (e.g. "Flat" or "Continent").
             random_seed (int, optional): If given, set the random state of np.random
                 to this value. Defaults to None.
         Returns:
@@ -50,36 +50,30 @@ class ExperimentRunner:
         if random_seed is not None:
             np.random.RandomState(random_seed)
 
-        partition_accuracies = []
-        partition_sizes = []
+        partitioning_method_results = ExperimentResult(partitioning_method)
 
         for partition in partitioned_dict:
             raw_input, raw_target = partitioned_dict[partition]
             print(f"\nNumber of countries in {partition}: {raw_input.shape[0]}")
 
-            partition_accuracy = self.__run_partition_train_and_test(
+            partition_accuracies = self.__run_partition_train_and_test(
                 raw_input, raw_target
             )
 
-            accuracy_mean = np.mean(partition_accuracy, axis=0)
-            accuracy_stderr = np.std(partition_accuracy, axis=0) / np.sqrt(
-                self.__num_folds
+            partitioning_method_results.add_partition_results(
+                partition, raw_input.shape[0], partition_accuracies
             )
 
+            accuracy_mean = np.mean(partition_accuracies, axis=0)
+
             print(f"Mean accuracy of {partition}: {accuracy_mean}")
-            print(f"S.d. accuracy of {partition}: {accuracy_stderr}")
 
-            partition_accuracies.append(accuracy_mean)
-
-            partition_sizes.append(raw_input.shape[0])
-
-        partition_weights = np.divide(partition_sizes, len(partitioned_dict))
-        weighted_avg_accuracy = np.average(
-            partition_accuracies, weights=partition_weights
+        print(
+            f"""
+            \nWeighted Mean Accuracy by {partitioning_method}:
+            {partitioning_method_results.weighted_average_accuracy}
+            """
         )
-
-        print(f"\nWeighted Mean Accuracy by {label} : {weighted_avg_accuracy}")
-        return weighted_avg_accuracy
 
     def __run_partition_train_and_test(
         self, raw_inputs: ndarray, raw_targets: ndarray
@@ -142,3 +136,65 @@ class ExperimentRunner:
         print(f"Fold accuracy: {accuracy}")
 
         return accuracy
+
+
+class ExperimentResult:
+    """The results of experiments on one partitioning methods
+    """
+
+    def __init__(self, partitioning_method: str):
+        """Instantiate an experiment result
+
+        Args:
+            partitioning_method (str): the partitioning method.
+                (`"Flat" | "Continent" | "Income Group"`)
+        """
+
+        self.partitioning_method = partitioning_method
+        self.partitions: List[PartitionResults] = []
+
+    def add_partition_results(
+        self, partition_name: str, partition_size: int, accuracies: List[float]
+    ) -> None:
+        """Add the results for a partition to the experiment results
+
+        Args:
+            partition_name (str): name of the partition (e.g. `"Asia"`)
+            partition_size (int): size of the partition
+            accuracies (List[float]): accuracy in each fold
+        """
+        partition_results = PartitionResults(partition_name, partition_size, accuracies)
+        self.partitions.append(partition_results)
+
+    @property
+    def weighted_average_accuracy(self) -> float:
+        """Get the average accuracy for this partitioning method,
+        weighted by the partition sizes
+
+        Returns:
+            float: weighted average accuracy for the partitioning method
+        """
+        total = 0
+
+        partitioning_accuracies: ndarray = np.empty(len(self.partitions))
+        partition_sizes: ndarray = np.empty(len(self.partitions))
+
+        for i, partition_results in enumerate(self.partitions):
+            total += partition_results.partition_size
+            partition_mean_accuracy = np.mean(partition_results.accuracies)
+
+            partitioning_accuracies[i] = partition_mean_accuracy
+            partition_sizes[i] = partition_results.partition_size
+
+        weights = partition_sizes / total
+        weighted_average_accuracy = np.average(partitioning_accuracies, weights=weights)
+        return weighted_average_accuracy
+
+
+class PartitionResults:
+    def __init__(
+        self, partition_name: str, partition_size: int, accuracies: List[float]
+    ):
+        self.partition_name = partition_name
+        self.partition_size = partition_size
+        self.accuracies = accuracies.copy()
