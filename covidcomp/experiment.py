@@ -25,7 +25,7 @@ class ExperimentResult:
         """
 
         self.partitioning_method = partitioning_method
-        self.partitions: List[PartitionResults] = []
+        self.partitions: List[PartitionResult] = []
         self.num_folds = num_folds
 
     def add_partition_results(
@@ -38,7 +38,7 @@ class ExperimentResult:
             partition_size (int): size of the partition
             accuracies (List[float]): accuracy in each fold
         """
-        partition_results = PartitionResults(partition_name, partition_size, accuracies)
+        partition_results = PartitionResult(partition_name, partition_size, accuracies)
         self.partitions.append(partition_results)
 
     @property
@@ -96,7 +96,7 @@ class ExperimentResult:
         return (data.T, labels)
 
 
-class PartitionResults:
+class PartitionResult:
     def __init__(
         self, partition_name: str, partition_size: int, accuracies: List[float]
     ):
@@ -106,6 +106,10 @@ class PartitionResults:
 
 
 class ExperimentRunner:
+    """Run an experiment with given model, number of CV folds
+    and PCA (if given).
+    """
+
     def __init__(self, model: Model, num_folds: int, pca: PCA = None):
         """Instantiate an experiment runner
 
@@ -204,7 +208,7 @@ class ExperimentRunner:
         the accuracy in this fold.
 
         Args:
-            data (DerivedRepresentation): the derived reprersentation of data
+            data (DerivedRepresentation): the derived representation of data
             fold_train_filter (ndarray): a binary 1-d array of countries.
                 A country is in training set if it has value `True`
             fold_test_filter (ndarray): a binary 1-d array of countries.
