@@ -11,17 +11,20 @@ from sklearn.decomposition import PCA
 from config import OUTPUT_DIR
 
 from .experiment import ExperimentResult
+from .model import Model
 
 
 class Plotter:
     """A plotter that plots all the diagrams in the experiment"""
 
-    FONT_SIZE = 20
+    FONT_SIZE = 16
 
     def __init__(self):
         pass
 
-    def plot_data_corr(self, flat_raw: DataFrame) -> None:
+    def plot_data_corr(
+        self, flat_raw: DataFrame, title="Correlation Matrix Heatmap"
+    ) -> None:
         """Plot the correlation heatmap of the data
 
         Args:
@@ -36,8 +39,8 @@ class Plotter:
         ax.set_xticklabels(
             ax.get_xticklabels(), rotation=45, horizontalalignment="right"
         )
-        plt.suptitle("Correlation Matrix Heatmap", fontsize=self.FONT_SIZE)
-        plt.savefig(join(OUTPUT_DIR, "correlation-matrix-heatmap.png"))
+        plt.suptitle(title, fontsize=self.FONT_SIZE)
+        plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
     def plot_hist(self, inputs: DataFrame, title: str = "") -> None:
         """Plot the histogram of data cols in inputs.
@@ -49,10 +52,11 @@ class Plotter:
         plt.figure()
         inputs.hist(figsize=(20, 10))
         plt.suptitle(title, fontsize=self.FONT_SIZE)
-        file_name = title.lower().replace(" ", "-") + ".png"
-        plt.savefig(join(OUTPUT_DIR, file_name))
+        plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
-    def plot_pca_explained_variance(self, inputs: ndarray) -> None:
+    def plot_pca_explained_variance(
+        self, inputs: ndarray, title="PCA - Ratio of Variance Explained"
+    ) -> None:
         """Plot the explained variance ratio against the number
         of components in PCA
 
@@ -70,12 +74,9 @@ class Plotter:
         plt.plot(np.cumsum(pca.explained_variance_ratio_ * 100))
         plt.xlabel("Number of Components (Dimensions)")
         plt.ylabel("Variance Explained (%)")
-        plt.suptitle(
-            "Dimensionality Reduction with PCA - Ratio of Variance Explained",
-            fontsize=self.FONT_SIZE,
-        )
+        plt.suptitle(title, fontsize=self.FONT_SIZE)
 
-        plt.savefig(join(OUTPUT_DIR, "pca-explained-variance-ratio.png"))
+        plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
     def plot_partitioning_method_results(self, result: ExperimentResult) -> None:
         """Plot the Box-and-Whisker diagram of the results
@@ -84,16 +85,49 @@ class Plotter:
         Args:
             result (ExperimentResult): [description]
         """
-
+        # Prepare data
         method = result.partitioning_method
         data, labels = result.get_boxplot_data()
-        plt.figure(figsize=(10, 10))
-        plt.boxplot(data, labels=labels, showmeans=True)
+
+        # Plot data
+        plt.figure(figsize=(10, 8))
+
+        bp_dict = plt.boxplot(data, labels=labels, showmeans=True, meanline=True)
+
+        # Set styles
         plt.xlabel("Partition and corresponding size")
         plt.ylabel("Accuracies")
+        plt.ylim(0, 1)
         plt.suptitle(
             f"Accuracies in Each Partition, Partitioned by {method}",
             fontsize=self.FONT_SIZE,
         )
 
-        plt.savefig(join(OUTPUT_DIR, f"{method}-partition-accuracies.png"))
+        # Show legends
+        plt.legend(
+            [bp_dict["medians"][0], bp_dict["means"][0]],
+            ["median", "mean"],
+            fontsize="x-large",
+        )
+
+        plt.savefig(join(OUTPUT_DIR, f"{method} Partition Accuracies.png"))
+
+    def plot_decision_boundary(
+        self, X: ndarray, y: ndarray, model: Model, pca: PCA = None
+    ) -> None:
+        """Plot the decision boundary of predictions from
+        a fitted model.
+
+        Args:
+            X (ndarray): N*D inputs data or design matrix
+            y (ndarray): N-d vector of true binary labels
+            model (Model): the fitted model
+            pca (PCA, optional): the PCA to use, if given.
+                Defaulted to None.
+        """
+        raise NotImplementedError()
+        # @Harrison
+        # TODO: transform X with PCA
+        # TODO: predict with model
+        # TODO: plot X with true labels
+        # TODO: plot prediction regions
