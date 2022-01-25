@@ -1,4 +1,5 @@
 from os.path import join
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,19 +40,20 @@ class Plotter:
         ax.set_xticklabels(
             ax.get_xticklabels(), rotation=45, horizontalalignment="right"
         )
-        plt.suptitle(title, fontsize=self.FONT_SIZE)
+
         plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
-    def plot_hist(self, inputs: DataFrame, title: str = "") -> None:
+    def plot_hist(self, inputs: DataFrame, cols: List[str], title: str = "") -> None:
         """Plot the histogram of data cols in inputs.
 
         Args:
             inputs (DataFrame): inputs data in DataFrame
+            cols (List[str]): the columns to show
             title (str, optional): plot title. Defaults to "".
         """
         plt.figure()
-        inputs.hist(figsize=(20, 10))
-        plt.suptitle(title, fontsize=self.FONT_SIZE)
+        inputs.hist(column=cols, figsize=(10, 8))
+
         plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
     def plot_pca_explained_variance(
@@ -74,34 +76,49 @@ class Plotter:
         plt.plot(np.cumsum(pca.explained_variance_ratio_ * 100))
         plt.xlabel("Number of Components (Dimensions)")
         plt.ylabel("Variance Explained (%)")
-        plt.suptitle(title, fontsize=self.FONT_SIZE)
 
         plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
-    def plot_partitioning_method_results(self, result: ExperimentResult) -> None:
+    def plot_partitioning_method_results(
+        self, result: ExperimentResult, control_result: ExperimentResult = None
+    ) -> None:
         """Plot the Box-and-Whisker diagram of the results
-        in one partitioning method
+        in one partitioning method. If control group is given,
+        plot control group in highlighted colours.
 
         Args:
-            result (ExperimentResult): [description]
+            result (ExperimentResult): experiment group result
+            control_result (ExperimentResult, optional):
+                control group result if given. Defaulted to None.
         """
         # Prepare data
         method = result.partitioning_method
         data, labels = result.get_boxplot_data()
 
+        # Concatenate the control group
+        # if control_result is given
+        if control_result is not None:
+            control_data, control_labels = control_result.get_boxplot_data()
+            data = np.append(data, control_data, axis=1)
+            labels.append(control_labels[0])
+
         # Plot data
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(12, 7))
 
         bp_dict = plt.boxplot(data, labels=labels, showmeans=True, meanline=True)
 
         # Set styles
-        plt.xlabel("Partition and corresponding size")
+        plt.xlabel("Partition (size)")
         plt.ylabel("Accuracies")
         plt.ylim(0, 1)
-        plt.suptitle(
-            f"Accuracies in Each Partition, Partitioned by {method}",
-            fontsize=self.FONT_SIZE,
-        )
+
+        # Change the style of the control group
+        if control_result is not None:
+            control_colour = "#E83E8B"
+            bp_dict["boxes"][-1].set(color=control_colour)
+            bp_dict["whiskers"][-1].set(color=control_colour)
+            bp_dict["caps"][-1].set(color=control_colour)
+            bp_dict["fliers"][-1].set(color=control_colour)
 
         # Show legends
         plt.legend(
