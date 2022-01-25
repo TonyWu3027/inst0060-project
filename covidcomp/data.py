@@ -436,9 +436,7 @@ class DerivedRepresentation:
 
         result = frame.copy()
 
-        result[[f"{col}_log" for col in columns]] = np.log(result[columns])
-
-        result.drop(columns=columns, inplace=True)
+        result[columns] = np.log(result[columns])
 
         return result
 
