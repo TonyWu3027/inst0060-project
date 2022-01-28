@@ -10,10 +10,24 @@ This project aim to explore the use of logistic regression model to compare betw
 
 ### Install Dependencies
 
-To install dependency, navigate to the root directory of the project and install dependencies via `requirements.txt`. With `conda` as an example:
+The best practice recommended is to create an environment for the project and install dependencies. To do this, navigate to the root directory of the project, create a new environment, and install dependencies via `requirements.txt`. With `conda` as an example:
+
+Create a new environment
 
 ```bash
-conda install --file requirements.txt
+conda create -n covidcomp python=3.7
+```
+
+Activate the new environment
+
+```bash
+conda activate covidcomp
+```
+
+Install dependencies from `requirements.txt`
+
+```bash
+conda install -n covidcomp --file requirements.txt
 ```
 
 > Note: the `requirements.txt` is adapted from the provided requirement file in INST0060 module. `seaborn` is added to the requirements for plotting a heat map of correlation matrix.
