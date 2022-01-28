@@ -1,5 +1,5 @@
 from os.path import join
-from typing import List
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,7 +52,7 @@ class Plotter:
             title (str, optional): plot title. Defaults to "".
         """
         plt.figure()
-        inputs.hist(column=cols, figsize=(10, 8))
+        inputs.hist(column=cols, figsize=(8, 6), layout=(2, 3))
 
         plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
@@ -80,7 +80,11 @@ class Plotter:
         plt.savefig(join(OUTPUT_DIR, f"{title}.png"))
 
     def plot_partitioning_method_results(
-        self, result: ExperimentResult, control_result: ExperimentResult = None
+        self,
+        result: ExperimentResult,
+        control_result: ExperimentResult = None,
+        figsize: Tuple[float, float] = (0, 1),
+        ylim: Tuple[float, float] = (0, 1),
     ) -> None:
         """Plot the Box-and-Whisker diagram of the results
         in one partitioning method. If control group is given,
@@ -90,6 +94,8 @@ class Plotter:
             result (ExperimentResult): experiment group result
             control_result (ExperimentResult, optional):
                 control group result if given. Defaulted to None.
+            figsize ((float, float)): (width, height) of plot.
+            ylim ((float, float)): (bottom, top) for plot y limits.
         """
         # Prepare data
         method = result.partitioning_method
@@ -110,7 +116,7 @@ class Plotter:
         # Set styles
         plt.xlabel("Partition (size)")
         plt.ylabel("Accuracies")
-        plt.ylim(0, 1)
+        plt.ylim(ylim)
 
         # Change the style of the control group
         if control_result is not None:
@@ -119,6 +125,8 @@ class Plotter:
             bp_dict["whiskers"][-1].set(color=control_colour)
             bp_dict["caps"][-1].set(color=control_colour)
             bp_dict["fliers"][-1].set(color=control_colour)
+            bp_dict["whiskers"][-2].set(color=control_colour)
+            bp_dict["caps"][-2].set(color=control_colour)
 
         # Show legends
         plt.legend(
