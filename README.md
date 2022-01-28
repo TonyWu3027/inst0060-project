@@ -2,7 +2,23 @@
 
 This is the code archive by Group E for the *INST0060* Group Project.
 
+## Aim of this Project
+
+This project aim to explore the use of logistic regression model to compare between two countries' average daily COVID-19 deaths. We particularly focus on whether grouping countries by *Continents* or by *Income Group* can help to improve classification accuracy.
+
 ## How to Use
+
+### Install Dependencies
+
+To install dependency, navigate to the root directory of the project and install dependencies via `requirements.txt`. With `conda` as an example:
+
+```bash
+conda install --file requirements.txt
+```
+
+> Note: the `requirements.txt` is adapted from the provided requirement file in INST0060 module. `seaborn` is added to the requirements for plotting a heat map of correlation matrix.
+
+### Run the experiment
 
 To conduct the experiment, the [OWID COVID-19 Dataset](https://covid.ourworldindata.org/data/owid-covid-data.csv) needs to be provided.
 
@@ -12,28 +28,32 @@ Start the experiment with `main.py` using command-line arguments. For instance:
 python3 main.py ./covid.csv
 ```
 
-## How it Works
+Prompts of experiment running status will be printed in the console. Plots will be saved to `./output/`
 
-### Data Preprocessing
+### Playground
 
-First of all, we rule out the countries which lack valid information. By jointing several charts and dividing countries into groups, we obtain a data frame, which for each row represents a particular country and its corresponding index.
+A playground jupyter notebook `./playground.ipynb` has been provided alongside with the experiment script to enable interactive experimenting.
 
-Overall, We will work on the daily average of all index within a month period.
+## Project Structure
 
-### Representation and Basis Function
+- `./covidcomp/` is the main Python library implemented for the project.
 
-### Partition
+    - `covidcomp.data` module processes the data from the original CSV file to Raw Representation and Derived Representation.
 
-### Algorithm
+    - `covidcomp.model` module provides an ABC `Model`, with is inherited by all concrete model implementation. `LogisticsRegression` and `L2RegularisedLogisticRegression` are implemented.
 
-### Evaluation
+    - `covidcomp.experiment` module provides `ExperimentRunner` and `ExperimentResult` to run experiments on partitioned and flat datasets with cross-validation and store results as `ExperimentResult` instances.
 
-In order the evaluate the algorithm, we compare the prediction and actual value by
+    - `covidcomp.plot` module provides a `Plotter` that will plot the required figures in the experiment.
 
-- Plotting a confusion matrix.
-- Calculating its F1 score. The higher F1 score stand for a more accurate algorithm.
+- `./fomlads/` is the supporting Python library provided in INST0060 Foundation of Machine Learning, from which `covidcomp` is developed.
+- `./data/` contains all the auxiliary datasets.
+- `./output/` is the output directory for plots.
+- `./playground.ipynb` see above.
+- `./main.py` the entry to the programme, see above.
+- The rest are project related configurations and IDE settings
 
-## Contributing
+## How to Contribute
 
 ### Code Linting
 
